@@ -1,0 +1,328 @@
+{
+  "entities": {
+    "ServerUser": {
+      "title": "ServerUser",
+      "description": "Server-managed user profile record keyed by HMAC-SHA256 capability hash (credentials isolated in ServerCredential).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique internal user UUID."
+        },
+        "userDocKey": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Server HMAC-SHA256 capability key for this user profile document."
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254,
+          "description": "Normalized lowercase user email address."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "User display name."
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["free", "pro"],
+          "minLength": 3,
+          "maxLength": 10,
+          "description": "Subscription tier."
+        },
+        "creditsRemaining": {
+          "type": "number",
+          "description": "Remaining generation credits."
+        },
+        "creditsTotal": {
+          "type": "number",
+          "description": "Total allocated generation credits."
+        },
+        "favorites": {
+          "type": "array",
+          "description": "Bounded list of up to 20 bookmarked tool IDs."
+        },
+        "generationIds": {
+          "type": "array",
+          "description": "Bounded list of up to 25 saved generation document IDs."
+        },
+        "createdAtIso": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 40,
+          "description": "ISO creation timestamp string."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp of last update."
+        }
+      },
+      "required": [
+        "id",
+        "userDocKey",
+        "email",
+        "name",
+        "plan",
+        "creditsRemaining",
+        "creditsTotal",
+        "favorites",
+        "generationIds",
+        "createdAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ServerCredential": {
+      "title": "ServerCredential",
+      "description": "Isolated write-once scrypt password hash and salt record keyed by a separate HMAC-SHA256 domain.",
+      "type": "object",
+      "properties": {
+        "credDocKey": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Server HMAC-SHA256 capability key for this credential document."
+        },
+        "userDocKey": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Associated ServerUser HMAC-SHA256 capability key."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Associated internal user UUID."
+        },
+        "passwordHash": {
+          "type": "string",
+          "minLength": 128,
+          "maxLength": 128,
+          "pattern": "^[a-f0-9]{128}$",
+          "description": "Scrypt 64-byte hex password hash."
+        },
+        "salt": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]+$",
+          "description": "Cryptographic random hex salt."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp of creation."
+        }
+      },
+      "required": [
+        "credDocKey",
+        "userDocKey",
+        "userId",
+        "passwordHash",
+        "salt",
+        "createdAt"
+      ]
+    },
+    "ServerSession": {
+      "title": "ServerSession",
+      "description": "Server-managed HttpOnly session record keyed by HMAC-SHA256 capability hash.",
+      "type": "object",
+      "properties": {
+        "sessionDocKey": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Server HMAC-SHA256 capability key for this session document."
+        },
+        "userDocKey": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Parent ServerUser HMAC-SHA256 capability key."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "User UUID."
+        },
+        "expiresAt": {
+          "type": "number",
+          "description": "Epoch milliseconds when the session expires."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp of session creation."
+        }
+      },
+      "required": [
+        "sessionDocKey",
+        "userDocKey",
+        "userId",
+        "expiresAt",
+        "createdAt"
+      ]
+    },
+    "UserGeneration": {
+      "title": "UserGeneration",
+      "description": "Saved AI tool generation record belonging to a ServerUser.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique generation ID."
+        },
+        "userDocKey": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Parent ServerUser HMAC-SHA256 capability key."
+        },
+        "toolId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "ID of the AI tool used."
+        },
+        "toolName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Display name of the AI tool."
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "User prompt text."
+        },
+        "outputPreview": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "description": "Preview of the generated output."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["image", "text", "audio", "video"],
+          "minLength": 4,
+          "maxLength": 10,
+          "description": "Modality type of the generation."
+        },
+        "createdAtDisplay": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Formatted timestamp for display."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp of creation."
+        }
+      },
+      "required": [
+        "id",
+        "userDocKey",
+        "toolId",
+        "toolName",
+        "prompt",
+        "outputPreview",
+        "type",
+        "createdAtDisplay",
+        "createdAt"
+      ]
+    },
+    "ServerRateLimit": {
+      "title": "ServerRateLimit",
+      "description": "Server-managed atomic rate-limit bucket keyed by HMAC-SHA256(SESSION_SECRET, ratelimit:<scope>:<clientIp>) so client IPs are never exposed.",
+      "type": "object",
+      "properties": {
+        "rateDocKey": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Server HMAC-SHA256 capability key for this rate-limit bucket."
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["login", "signup", "chat"],
+          "minLength": 4,
+          "maxLength": 16,
+          "pattern": "^[a-z]+$",
+          "description": "Protected endpoint rate-limit scope."
+        },
+        "count": {
+          "type": "number",
+          "description": "Atomic request counter within the current rate-limit window."
+        },
+        "resetAt": {
+          "type": "number",
+          "description": "Epoch milliseconds when the current rate-limit window expires."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp of last atomic counter update."
+        }
+      },
+      "required": [
+        "rateDocKey",
+        "scope",
+        "count",
+        "resetAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/server_users/{userDocKey}": {
+      "schema": { "$ref": "#/entities/ServerUser" },
+      "description": "Stores server-managed user profile, credits, favorites, and generation ID index (no password hashes)."
+    },
+    "/server_credentials/{credDocKey}": {
+      "schema": { "$ref": "#/entities/ServerCredential" },
+      "description": "Isolated write-once collection storing scrypt password hashes and salts keyed by a dedicated HMAC domain."
+    },
+    "/server_users/{userDocKey}/generations/{generationId}": {
+      "schema": { "$ref": "#/entities/UserGeneration" },
+      "description": "Subcollection of saved AI tool generations belonging to a specific user."
+    },
+    "/server_sessions/{sessionDocKey}": {
+      "schema": { "$ref": "#/entities/ServerSession" },
+      "description": "Stores active server-managed HttpOnly session records referencing a valid ServerUser."
+    },
+    "/server_rate_limits/{rateDocKey}": {
+      "schema": { "$ref": "#/entities/ServerRateLimit" },
+      "description": "Stores server-managed atomic rate-limit counters keyed by HMAC-SHA256 capability hashes without exposing client IPs."
+    }
+  }
+}

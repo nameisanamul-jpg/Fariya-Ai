@@ -1,0 +1,6 @@
+{
+  "name": "Fariya AI",
+  "description": "One Platform. Endless AI Possibilities. All-in-one suite for AI Chat, Image Generation, Video, Voice, Writing, Music, and Background Removal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

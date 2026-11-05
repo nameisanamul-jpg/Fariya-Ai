@@ -1,0 +1,308 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCapabilityHash(hashId) {
+      return hashId is string && hashId.size() == 64 && hashId.matches('^[a-f0-9]{64}$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 2. Validation Blueprints (Anti-Update-Gap)
+    function isValidServerUser(data) {
+      return data.keys().hasAll([
+          'id',
+          'userDocKey',
+          'email',
+          'name',
+          'plan',
+          'creditsRemaining',
+          'creditsTotal',
+          'favorites',
+          'generationIds',
+          'createdAtIso',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'userDocKey',
+          'email',
+          'name',
+          'plan',
+          'creditsRemaining',
+          'creditsTotal',
+          'favorites',
+          'generationIds',
+          'createdAtIso',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidCapabilityHash(data.userDocKey) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.plan is string && data.plan.size() >= 3 && data.plan.size() <= 10 && (data.plan == 'free' || data.plan == 'pro') &&
+        data.creditsRemaining is number && data.creditsRemaining >= 0 && data.creditsRemaining <= 100000 &&
+        data.creditsTotal is number && data.creditsTotal >= 1 && data.creditsTotal <= 100000 &&
+        data.favorites is list && data.favorites.size() <= 20 &&
+        (data.favorites.size() == 0 || (data.favorites[0] is string && data.favorites[0].size() >= 1 && data.favorites[0].size() <= 64)) &&
+        data.generationIds is list && data.generationIds.size() <= 25 &&
+        (data.generationIds.size() == 0 || (data.generationIds[0] is string && data.generationIds[0].size() >= 1 && data.generationIds[0].size() <= 128)) &&
+        data.createdAtIso is string && data.createdAtIso.size() >= 10 && data.createdAtIso.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidServerCredential(data) {
+      return data.keys().hasAll([
+          'credDocKey',
+          'userDocKey',
+          'userId',
+          'passwordHash',
+          'salt',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'credDocKey',
+          'userDocKey',
+          'userId',
+          'passwordHash',
+          'salt',
+          'createdAt'
+        ]) &&
+        isValidCapabilityHash(data.credDocKey) &&
+        isValidCapabilityHash(data.userDocKey) &&
+        isValidId(data.userId) &&
+        data.passwordHash is string && data.passwordHash.size() == 128 && data.passwordHash.matches('^[a-f0-9]{128}$') &&
+        data.salt is string && data.salt.size() >= 32 && data.salt.size() <= 64 && data.salt.matches('^[a-f0-9]+$') &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidServerSession(data) {
+      return data.keys().hasAll([
+          'sessionDocKey',
+          'userDocKey',
+          'userId',
+          'expiresAt',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'sessionDocKey',
+          'userDocKey',
+          'userId',
+          'expiresAt',
+          'createdAt'
+        ]) &&
+        isValidCapabilityHash(data.sessionDocKey) &&
+        isValidCapabilityHash(data.userDocKey) &&
+        isValidId(data.userId) &&
+        data.expiresAt is number && data.expiresAt > 0 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidServerRateLimit(data) {
+      return data.keys().hasAll([
+          'rateDocKey',
+          'scope',
+          'count',
+          'resetAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'rateDocKey',
+          'scope',
+          'count',
+          'resetAt',
+          'updatedAt'
+        ]) &&
+        isValidCapabilityHash(data.rateDocKey) &&
+        data.scope is string && data.scope.size() >= 4 && data.scope.size() <= 16 &&
+        data.scope.matches('^[a-z]+$') &&
+        (data.scope == 'login' || data.scope == 'signup' || data.scope == 'chat') &&
+        data.count is number && data.count >= 1 && data.count <= 100000 &&
+        data.resetAt is number && data.resetAt > 0 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserGeneration(data) {
+      return data.keys().hasAll([
+          'id',
+          'userDocKey',
+          'toolId',
+          'toolName',
+          'prompt',
+          'outputPreview',
+          'type',
+          'createdAtDisplay',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'userDocKey',
+          'toolId',
+          'toolName',
+          'prompt',
+          'outputPreview',
+          'type',
+          'createdAtDisplay',
+          'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidCapabilityHash(data.userDocKey) &&
+        isValidId(data.toolId) && data.toolId.size() <= 64 &&
+        data.toolName is string && data.toolName.size() >= 1 && data.toolName.size() <= 100 &&
+        data.prompt is string && data.prompt.size() >= 1 && data.prompt.size() <= 4000 &&
+        data.outputPreview is string && data.outputPreview.size() >= 1 && data.outputPreview.size() <= 4000 &&
+        data.type is string && data.type.size() >= 4 && data.type.size() <= 10 &&
+        (data.type == 'image' || data.type == 'text' || data.type == 'audio' || data.type == 'video') &&
+        data.createdAtDisplay is string && data.createdAtDisplay.size() >= 1 && data.createdAtDisplay.size() <= 64 &&
+        data.createdAt is timestamp;
+    }
+
+    // Collection: /server_users/{userDocKey} (Profile, Credits, Favorites & Generation Index — No Credentials)
+    match /server_users/{userDocKey} {
+      // Never allow listing or enumerating user accounts
+      allow list: if false;
+
+      // Single-document lookup requires knowing the exact 256-bit HMAC capability key
+      allow get: if isValidCapabilityHash(userDocKey) &&
+        (resource == null || existing().userDocKey == userDocKey);
+
+      allow create: if isValidCapabilityHash(userDocKey) &&
+        isValidServerUser(incoming()) &&
+        incoming().userDocKey == userDocKey &&
+        incoming().plan == 'free' &&
+        incoming().creditsRemaining <= incoming().creditsTotal &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidCapabilityHash(userDocKey) &&
+        isValidServerUser(incoming()) &&
+        incoming().userDocKey == existing().userDocKey &&
+        incoming().id == existing().id &&
+        incoming().email == existing().email &&
+        incoming().plan == existing().plan &&
+        incoming().creditsTotal == existing().creditsTotal &&
+        incoming().creditsRemaining <= existing().creditsRemaining &&
+        incoming().createdAtIso == existing().createdAtIso &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action: Update Favorites
+          incoming().diff(existing()).affectedKeys().hasOnly(['favorites', 'updatedAt']) ||
+          // Action: Record Generation & Decrement Credits
+          incoming().diff(existing()).affectedKeys().hasOnly(['creditsRemaining', 'generationIds', 'updatedAt']) ||
+          // Action: Sync Profile State (or strip legacy passwordHash/salt fields)
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'favorites', 'generationIds', 'creditsRemaining', 'passwordHash', 'salt', 'updatedAt'])
+        );
+
+      allow delete: if false;
+
+      // Subcollection: /server_users/{userDocKey}/generations/{generationId}
+      match /generations/{generationId} {
+        allow list: if false;
+
+        // Master Gate: Verify parent ServerUser exists and matches userDocKey
+        allow get: if isValidCapabilityHash(userDocKey) &&
+          isValidId(generationId) &&
+          (resource == null || existing().userDocKey == userDocKey) &&
+          exists(/databases/$(database)/documents/server_users/$(userDocKey)) &&
+          get(/databases/$(database)/documents/server_users/$(userDocKey)).data.userDocKey == userDocKey;
+
+        allow create: if isValidCapabilityHash(userDocKey) &&
+          isValidId(generationId) &&
+          isValidUserGeneration(incoming()) &&
+          incoming().id == generationId &&
+          incoming().userDocKey == userDocKey &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/server_users/$(userDocKey)) &&
+          get(/databases/$(database)/documents/server_users/$(userDocKey)).data.userDocKey == userDocKey;
+
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    // Collection: /server_credentials/{credDocKey} (Isolated Write-Once Scrypt Password Hashes & Salts)
+    match /server_credentials/{credDocKey} {
+      allow list: if false;
+
+      allow get: if isValidCapabilityHash(credDocKey) &&
+        (resource == null || existing().credDocKey == credDocKey);
+
+      allow create: if isValidCapabilityHash(credDocKey) &&
+        isValidServerCredential(incoming()) &&
+        incoming().credDocKey == credDocKey &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/server_users/$(incoming().userDocKey)) &&
+        get(/databases/$(database)/documents/server_users/$(incoming().userDocKey)).data.id == incoming().userId;
+
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Collection: /server_sessions/{sessionDocKey}
+    match /server_sessions/{sessionDocKey} {
+      allow list: if false;
+
+      allow get: if isValidCapabilityHash(sessionDocKey) &&
+        (resource == null || (
+          existing().sessionDocKey == sessionDocKey &&
+          exists(/databases/$(database)/documents/server_users/$(existing().userDocKey))
+        ));
+
+      allow create: if isValidCapabilityHash(sessionDocKey) &&
+        isValidServerSession(incoming()) &&
+        incoming().sessionDocKey == sessionDocKey &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/server_users/$(incoming().userDocKey)) &&
+        get(/databases/$(database)/documents/server_users/$(incoming().userDocKey)).data.id == incoming().userId;
+
+      allow update: if false;
+
+      allow delete: if isValidCapabilityHash(sessionDocKey) &&
+        (resource == null || existing().sessionDocKey == sessionDocKey);
+    }
+
+    // Collection: /server_rate_limits/{rateDocKey} (Atomic Server-Side Rate-Limit Counters — No Client IP Exposure)
+    match /server_rate_limits/{rateDocKey} {
+      allow list: if false;
+
+      allow get: if isValidCapabilityHash(rateDocKey) &&
+        (resource == null || existing().rateDocKey == rateDocKey);
+
+      allow create: if isValidCapabilityHash(rateDocKey) &&
+        isValidServerRateLimit(incoming()) &&
+        incoming().rateDocKey == rateDocKey &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidCapabilityHash(rateDocKey) &&
+        isValidServerRateLimit(incoming()) &&
+        incoming().rateDocKey == existing().rateDocKey &&
+        incoming().scope == existing().scope &&
+        incoming().updatedAt == request.time && (
+          // Action: Atomic Counter Increment or Window Reset
+          incoming().diff(existing()).affectedKeys().hasOnly(['count', 'resetAt', 'updatedAt'])
+        );
+
+      allow delete: if isValidCapabilityHash(rateDocKey) &&
+        (resource == null || existing().rateDocKey == rateDocKey);
+    }
+  }
+}
